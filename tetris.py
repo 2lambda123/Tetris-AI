@@ -230,6 +230,7 @@ def rotateFallingPiece(data):
 
 #Integrates a fallen piece into the data.board
 def placeFallingPiece(data):
+    data.numPlaced += 1
     piece = data.fallingPiece
     pWidth = len(piece[0])
     pHeight = len(piece)
@@ -344,6 +345,7 @@ def init(data):
     random.shuffle(data.nextQueue)
 
     data.scoring = [0,0,0,0]
+    data.numPlaced = 0
 
     newFallingPiece(data,data.pieceNum)
     # holdPiece(data)
@@ -389,7 +391,7 @@ def keyPressed(event, data):
             totTime = time.time()-data.beginRun
             print("TOTAL TIME: ", totTime)
             print("TOTAL SCORE: ", data.score)
-            print("Score/Time: ", data.score/totTime)
+            print("Score/Pieces ", data.score/data.numPlaced)
             print("Score breakdown: ")
             print("singles: ", data.scoring[0])
             print("doubles: ", data.scoring[1])
@@ -425,7 +427,7 @@ def redrawAll(canvas, data):
 
 
 ####################################
-# use the run function as-is
+# Run function from 15-112 course notes
 ####################################
 
 def run(width=300, height=300):
@@ -493,10 +495,10 @@ def run(width=300, height=300):
 
 def rateBoard(data):
     lineCoeff = 1
-    holeCoeff = .5
+    holeCoeff = 1
     heightCoeff = .1
     sideCoeff = .05
-    compCoeff = .05
+    compCoeff = .04
 
 
 
@@ -511,6 +513,11 @@ def rateBoard(data):
     #     score -= (4-lines)*10
     # else:
     #     score += (lines**3)*lineCoeff
+
+    # if lines < 3:
+    #     score -= lines*5
+    # else:
+    #     score += lines**2*lineCoeff
     score += lines**2*lineCoeff
 
     holes = 0
@@ -642,6 +649,7 @@ def AI(canvas,data,redraw):
 
     print("BEST: ", bestMove, bestScore, "Time: ", time.time()-start)
     # print("Time Taken: ",time.time()-start)
+    print(data.score)
 
 
 
