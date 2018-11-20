@@ -375,7 +375,7 @@ def keyPressed(event, data):
     # hardDrop(thing)
     # print((data.pieceRotPos, data.fallingPieceCol))
     # print(rateBoard(thing) - firstScore)
-    print(data.pieceRotPos)
+    print(data.fallingPiece)
 
 
 #Moves pieces, if it can't then it places it
@@ -442,7 +442,6 @@ def run(width=300, height=300):
     timerFiredWrapper(canvas, data)
     # and launch the app
     root.mainloop()  # blocks until window is closed
-    
     print("bye!")
 
 
@@ -469,74 +468,87 @@ def rateBoard(data):
             lines += 1
     score += lines**2
 
-    colBoard = np.transpose(copy.deepcopy(data.board))
-    for col in colBoard:
-        col = np.ndarray.tolist(col)
-        while len(col) > 0 and col[0] == data.emptyColor:
-            col.pop(0)
-        new = col.count(data.emptyColor)
-        holes += new
-    score -= holes/5
+    for i in range(data.cols):
+        top=0
+        newHoles = 0
+        while top<data.rows and data.board[top][i] == data.emptyColor:
+            top += 1
+        while top < data.rows:
+            if data.board[top][i] == data.emptyColor:
+                newHoles += 1
+            top += 1
+        holes += newHoles
+    score -= holes
 
-    biggestHeight = 0
 
+    highestHeight = 0
     for i in range(len(data.board)):
         if data.board[i].count(data.emptyColor) != data.cols:
-            biggestHeight = data.rows-i
+            highestHeight = i
             break
+    changeHeight = highestHeight - data.lastHeight
+
     # print("lastHeight:",data.lastHeight)
     # print("biggestHeight",biggestHeight)
-    score += (data.lastHeight-biggestHeight)/10
+
+    score -= changeHeight/4 #make totalHeight small
 
     return score
 
 
-
-def AI(canvas,data,redraw):
+def findBestMove(data):
     origScore = rateBoard(data)
-    delay = 0
     alreadyChecked = []
     bestScore = -float("inf")
     bestMove = []
     progression = []
 
-    data.fallingPieceCol = 0
     for i in range(4):
-        # if data.fallingPiece not in
-        #For each rotation, move to the left and rotate piece once if you
-        # pass an index not on the right wall
-        while moveFallingPieces(data,0,-1):
-            pass
+        data.fallingPieceCol = 5
         rotateFallingPiece(data)
+        # if data.fallingPiece not in
+        # For each rotation, move to the left and rotate piece once if you
+        # pass an index not on the right wall
+        data.fallingPieceCol = 0
+
+        oneRot = time.time()
         if data.fallingPiece not in alreadyChecked:
             for j in range(10):
-                if moveFallingPieces(data,0,1):
+                if moveFallingPieces(data, 0, 1):
                     if j == 0:
-                        moveFallingPieces(data,0,-1)
+                        moveFallingPieces(data, 0, -1)
                     thing = copy.deepcopy(data)
                     hardDrop(thing)
-                    rating = rateBoard(thing)-origScore
+                    rating = rateBoard(thing) - origScore
+                    # print(rating)
                     if rating > bestScore:
                         bestScore = rating
-                        bestMove = [(data.pieceRotPos,j)]
+                        bestMove = [(data.pieceRotPos, j)]
                     elif rating == bestScore:
-                        bestMove.append((data.pieceRotPos,j))
-            alreadyChecked.append(data.fallingPiece)
-        print(alreadyChecked)
+                        bestMove.append((data.pieceRotPos, j))
+            alreadyChecked.append(copy.copy(data.fallingPiece))
+    return bestMove
+
+def AI(canvas,data,redraw):
+    start = time.time()
+    bestMove = findBestMove(data)
+    # print(bestMove)
     bestMove = random.choice(bestMove)
 
 
-    redraw(canvas,data)
     moveFallingPieces(data,0,-1)
     while data.pieceRotPos != bestMove[0]:
         # print(data.pieceRotPos)
         rotateFallingPiece(data)
-        redraw(canvas,data)
     data.fallingPieceCol = bestMove[1]
-    redraw(canvas,data)
-    print("BEST: ", bestMove)
+    redraw(canvas,data) # This function takes hella long
+
+    print("BEST: ", bestMove, "Time: ", time.time()-start)
+    # time.sleep(5)
     hardDrop(data)
 
+
+    # print("Time Taken: ",time.time()-start)
 
 
 
