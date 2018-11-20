@@ -7,7 +7,6 @@
 from tkinter import *
 import random
 import copy
-import numpy as np
 import time
 
 
@@ -169,7 +168,7 @@ def fallingPieceIsLegal(data):
     pieceCol = data.fallingPieceCol
     pHeight = len(piece)
     pWidth = len(piece[0])
-    
+
     #Check if each cell of each piece is legal i.e. doesn't overlap colored bloc
     for i in range(pHeight):
         for j in range(pWidth):
@@ -188,7 +187,7 @@ def rotateFallingPiece(data):
     oldColPos =  data.fallingPieceCol
     oldRows = len(oldPiece)
     oldCols = len(oldPiece[0])
-    
+
     #Calculate new location, dimensions, and piece
     newRows = oldCols
     newCols = oldRows
@@ -203,7 +202,7 @@ def rotateFallingPiece(data):
     for i in range(oldRows):
         for j in range(oldCols):
             newPiece[newRows-1-j][i] = oldPiece[i][j]
-            
+
     #Assigning new variables
     data.fallingPieceRow = newRowPos
     data.fallingPieceCol = newColPos
@@ -236,8 +235,8 @@ def placeFallingPiece(data):
     pHeight = len(piece)
     startRow = data.fallingPieceRow
     startCol = data.fallingPieceCol
-    
-    #iterates over the piece, placing each piece at the right board spot 
+
+    #iterates over the piece, placing each piece at the right board spot
     for i in range(pHeight):
         for j in range(pWidth):
             if piece[i][j]:
@@ -249,7 +248,7 @@ def placeFallingPiece(data):
         random.shuffle(data.nextQueue)
     newFallingPiece(data,data.currentQueue.pop(0))
     data.canSwitch = True
-    
+
 #Removes full rows (sorry for the useless comment)
 def removeFullRows(data):
     oldBoard = data.board
@@ -272,7 +271,7 @@ def holdPiece(data):
     if data.heldPieceNum == None:
         data.heldPieceNum = data.pieceNum
         data.heldPiece = data.fallingPiece
-        newFallingPiece(data,data.currentQueue.pop(0))
+        newFallingPiece(data,(data.currentQueue+data.nextQueue).pop(0))
     elif data.canSwitch:
         temp = data.heldPieceNum
         data.heldPieceNum = data.pieceNum
@@ -310,7 +309,7 @@ def init(data):
         data.board.append([])
         for j in range(data.cols):
             data.board[i].append(data.emptyColor)
-    
+
     iPiece = [[  True,  True,  True,  True ]]
     jPiece = [[  True, False, False ],[  True,  True,  True ]]
     lPiece = [[ False, False,  True ],[  True,  True,  True ]]
@@ -347,6 +346,7 @@ def init(data):
     data.scoring = [0,0,0,0]
     data.numPlaced = 0
 
+
     newFallingPiece(data,data.pieceNum)
     # holdPiece(data)
 
@@ -361,18 +361,18 @@ def keyPressed(event, data):
     #Controls restart
     if event.keysym == 'r':
         init(data)
-    
+
     #Controls arrow movements
     if not (data.isGameOver):
         if event.keysym == "Left":
             moveFallingPieces(data, 0, -1)
-        
+
         if event.keysym == "Right":
             moveFallingPieces(data, 0, 1)
-        
+
         if event.keysym == "Down":
             moveFallingPieces(data, 1, 0)
-        
+
         if event.keysym == "Up":
             rotateFallingPiece(data)
             rotateFallingPiece(data)
@@ -387,17 +387,17 @@ def keyPressed(event, data):
         if event.keysym == "t":
             time.sleep(60)
 
-        if event.keysym == "q":
-            totTime = time.time()-data.beginRun
-            print("TOTAL TIME: ", totTime)
-            print("TOTAL SCORE: ", data.score)
-            print("Score/Pieces ", data.score/data.numPlaced)
-            print("Score breakdown: ")
-            print("singles: ", data.scoring[0])
-            print("doubles: ", data.scoring[1])
-            print("trips: ", data.scoring[2])
-            print("tetrodes: ", data.scoring[3])
-            data.isGameOver = True
+    if event.keysym == "q":
+        totTime = time.time() - data.beginRun
+        print("TOTAL TIME: ", totTime)
+        print("TOTAL SCORE: ", data.score)
+        print("Score/Pieces ", data.score / data.numPlaced)
+        print("Score breakdown: ")
+        print("singles: ", data.scoring[0])
+        print("doubles: ", data.scoring[1])
+        print("trips: ", data.scoring[2])
+        print("tetrodes: ", data.scoring[3])
+        data.isGameOver = True
 
 
     # firstScore = rateBoard(data)
@@ -415,7 +415,7 @@ def timerFired(data):
             placeFallingPiece(data)
         if not fallingPieceIsLegal(data):
             data.isGameOver = True
-        
+
 
 def redrawAll(canvas, data):
     canvas.create_rectangle(0,0,data.width, data.height, fill="orange")
@@ -460,7 +460,7 @@ def run(width=300, height=300):
     data = Struct()
     data.width = width
     data.height = height
-    data.timerDelay = 0 # milliseconds
+    data.timerDelay = 100 # milliseconds
     root = Tk()
     root.resizable(width=False, height=False) # prevents resizing window
     init(data)
@@ -496,9 +496,9 @@ def run(width=300, height=300):
 def rateBoard(data):
     lineCoeff = 1
     holeCoeff = 1
-    heightCoeff = .1
-    sideCoeff = .05
-    compCoeff = .04
+    # heightCoeff = .1
+    # sideCoeff = .01
+    compCoeff = .3
 
 
 
@@ -509,8 +509,8 @@ def rateBoard(data):
             lines += 1
     #This is me messing around with the scoring for lines. I gotta make this genomic
 
-    # if lines < 4:
-    #     score -= (4-lines)*10
+    # if lines == 1:
+    #     pass
     # else:
     #     score += (lines**3)*lineCoeff
 
@@ -518,7 +518,8 @@ def rateBoard(data):
     #     score -= lines*5
     # else:
     #     score += lines**2*lineCoeff
-    score += lines**2*lineCoeff
+
+    score += (lines)**2*lineCoeff
 
     holes = 0
     for i in range(data.cols):
@@ -533,17 +534,17 @@ def rateBoard(data):
         holes += newHoles
     score -= holes*holeCoeff
 
-
-    highestHeight = 0
-    for i in range(len(data.board)):
-        if data.board[i].count(data.emptyColor) != data.cols:
-            highestHeight = i
-            break
-    score -= data.lastHeight*heightCoeff #minimize height you place stuff at
+# THESE UNDERLYING TWO BITS ARE WHAT BROKE THE HOLDING, IDK WHY
+    # highestHeight = 0
+    # for i in range(len(data.board)):
+    #     if data.board[i].count(data.emptyColor) != data.cols:
+    #         highestHeight = i
+    #         break
+    # score -= data.lastHeight*heightCoeff #minimize height you place stuff at
 
 
     #Favor a side slightly
-    score -= data.fallingPieceCol*sideCoeff
+    # score -= data.fallingPieceCol*sideCoeff
 
     colHeight = []
     for j in range(data.cols):
@@ -575,7 +576,7 @@ def findBestMove(data,bestScore = -float("inf")):
         # pass an index not on the right wall
         data.fallingPieceCol = 0
 
-        oneRot = time.time()
+        # oneRot = time.time()
         if data.fallingPiece not in alreadyChecked:
             for j in range(10):
                 if moveFallingPieces(data, 0, 1):
@@ -591,20 +592,21 @@ def findBestMove(data,bestScore = -float("inf")):
                     elif rating == bestScore:
                         bestMove.append((data.pieceRotPos, j,0))
             alreadyChecked.append(copy.copy(data.fallingPiece))
-
     if data.canSwitch:
-        holdPiece(data)
-        newMoves,newScore = findBestMove(data,bestScore)
-        if len(newMoves) != 0:
+        holding = copy.deepcopy(data)
+        holdPiece(holding)
+        newMoves, newScore = findBestMove(holding,bestScore)
+        if newScore > bestScore and len(newMoves) > 0:
             bestScore = newScore
             bestMove = newMoves
             for i in range(len(bestMove)):
-                bestMove[i] = (bestMove[i][0],bestMove[i][1],1)
+                bestMove[i] = (bestMove[i][0], bestMove[i][1], 1)
     return bestMove,bestScore
 
 
 
 def makeMove(data,bestMove):
+    # time.sleep(.1)
     if bestMove[2] == 1:
         holdPiece(data)
     moveFallingPieces(data, 0, -1)
@@ -619,26 +621,26 @@ def AI(canvas,data,redraw):
         return
 
     start = time.time()
-    try:
-        bestMove = data.nextMove
-        bestScore = -float("inf")
-    except:
-        bestMove,bestScore = findBestMove(data)
 
+    # try:
+    #     bestMove = data.nextMove
+    #     bestScore = -float("inf")
+    # except:
+    bestMove,bestScore = findBestMove(data)
 
-    print(data.fallingPiece)
-    for move in bestMove:
-        testHold = copy.deepcopy(data)
-        makeMove(testHold,move)
-        hardDrop(testHold)
-        newMoves,newScore = findBestMove(testHold,bestScore)
-        if len(newMoves) != 0:
-            bestScore = newScore
-            bestMove = [move]
-            data.nextMove = newMoves
-
-
-
+    if len(bestMove) > 1:
+        newBestMoves = []
+        topNextScore = -float('inf')
+        for move in bestMove:
+            testHold = copy.deepcopy(data)
+            makeMove(testHold,move)
+            hardDrop(testHold)
+            newMoves,newScore = findBestMove(testHold,bestScore)
+            if newScore > topNextScore and len(newMoves) > 0:
+                topNextScore = newScore
+                newBestMoves = [move]
+        if newBestMoves != []:
+            bestMove = newBestMoves
 
     bestMove = random.choice(bestMove)
 
@@ -649,10 +651,23 @@ def AI(canvas,data,redraw):
 
     print("BEST: ", bestMove, bestScore, "Time: ", time.time()-start)
     # print("Time Taken: ",time.time()-start)
-    print(data.score)
+
 
 
 
 playTetris()
 
+
+# AI should
+# - take in board state,
+# - find the best move and score for the current piece, returning them
+# - do each best move (in a new data) and find bestmove and bestscore for next piece in each new data
+# - only keep moves that return the highest future return ???
+# - make new data where it does each bestmove and finds the next best score
+
+
+# TODO:
+# fix lookahead
+# have it auto-optimize variables
+# New tetris pieces test
 
