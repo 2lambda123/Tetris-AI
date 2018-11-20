@@ -263,6 +263,8 @@ def removeFullRows(data):
     for i in range(fullRows):
         newBoard.insert(0,[data.emptyColor]*data.cols)
     data.board = newBoard
+    if fullRows != 0:
+        data.scoring[fullRows-1] += 1
     data.score += fullRows**2
 
 def holdPiece(data):
@@ -298,6 +300,7 @@ def hardDrop(data):
 ####################################
 
 def init(data):
+    data.beginRun = time.time()
     data.rows, data.cols, data.cellSize, data.margin,data.topMargin\
         = gameDimensions()
     data.emptyColor = "#2d2d2d"
@@ -340,7 +343,10 @@ def init(data):
     random.shuffle(data.currentQueue)
     random.shuffle(data.nextQueue)
 
+    data.scoring = [0,0,0,0]
+
     newFallingPiece(data,data.pieceNum)
+    # holdPiece(data)
 
 
 def mousePressed(event, data):
@@ -378,6 +384,20 @@ def keyPressed(event, data):
 
         if event.keysym == "t":
             time.sleep(60)
+
+        if event.keysym == "q":
+            totTime = time.time()-data.beginRun
+            print("TOTAL TIME: ", totTime)
+            print("TOTAL SCORE: ", data.score)
+            print("Score/Time: ", data.score/totTime)
+            print("Score breakdown: ")
+            print("singles: ", data.scoring[0])
+            print("doubles: ", data.scoring[1])
+            print("trips: ", data.scoring[2])
+            print("tetrodes: ", data.scoring[3])
+            data.isGameOver = True
+
+
     # firstScore = rateBoard(data)
     # thing = copy.deepcopy(data)
     # hardDrop(thing)
@@ -409,6 +429,7 @@ def redrawAll(canvas, data):
 ####################################
 
 def run(width=300, height=300):
+
     def redrawAllWrapper(canvas, data):
         canvas.delete(ALL)
         canvas.create_rectangle(0, 0, data.width, data.height,
@@ -471,11 +492,11 @@ def run(width=300, height=300):
 # 2.
 
 def rateBoard(data):
-    lineCoeff = 4
+    lineCoeff = 1
     holeCoeff = .5
     heightCoeff = .1
     sideCoeff = .05
-    compCoeff = .1
+    compCoeff = .05
 
 
 
@@ -484,8 +505,13 @@ def rateBoard(data):
     for row in data.board:
         if row.count(data.emptyColor) == 0:
             lines += 1
-    score += (lines**2)*lineCoeff
+    #This is me messing around with the scoring for lines. I gotta make this genomic
 
+    # if lines < 4:
+    #     score -= (4-lines)*10
+    # else:
+    #     score += (lines**3)*lineCoeff
+    score += lines**2*lineCoeff
 
     holes = 0
     for i in range(data.cols):
@@ -509,9 +535,8 @@ def rateBoard(data):
     score -= data.lastHeight*heightCoeff #minimize height you place stuff at
 
 
-    #Favor a side, lightly
+    #Favor a side slightly
     score -= data.fallingPieceCol*sideCoeff
-
 
     colHeight = []
     for j in range(data.cols):
@@ -555,22 +580,37 @@ def findBestMove(data,bestScore = -float("inf")):
                     # print(rating)
                     if rating > bestScore:
                         bestScore = rating
-                        bestMove = [(data.pieceRotPos, j)]
+                        bestMove = [(data.pieceRotPos, j,0)]
                     elif rating == bestScore:
-                        bestMove.append((data.pieceRotPos, j))
+                        bestMove.append((data.pieceRotPos, j,0))
             alreadyChecked.append(copy.copy(data.fallingPiece))
+
+    if data.canSwitch:
+        holdPiece(data)
+        newMoves,newScore = findBestMove(data,bestScore)
+        if len(newMoves) != 0:
+            bestScore = newScore
+            bestMove = newMoves
+            for i in range(len(bestMove)):
+                bestMove[i] = (bestMove[i][0],bestMove[i][1],1)
     return bestMove,bestScore
 
 
 
 def makeMove(data,bestMove):
+    if bestMove[2] == 1:
+        holdPiece(data)
     moveFallingPieces(data, 0, -1)
     while data.pieceRotPos != bestMove[0]:
         rotateFallingPiece(data)
     data.fallingPieceCol = bestMove[1]
-    # This function takes hella long
+
+
 
 def AI(canvas,data,redraw):
+    if data.isGameOver:
+        return
+
     start = time.time()
     try:
         bestMove = data.nextMove
@@ -578,6 +618,8 @@ def AI(canvas,data,redraw):
     except:
         bestMove,bestScore = findBestMove(data)
 
+
+    print(data.fallingPiece)
     for move in bestMove:
         testHold = copy.deepcopy(data)
         makeMove(testHold,move)
@@ -594,7 +636,7 @@ def AI(canvas,data,redraw):
     bestMove = random.choice(bestMove)
 
     makeMove(data,bestMove)
-    redraw(canvas, data)
+    redraw(canvas, data) #this function takes hella long
     hardDrop(data)
 
 
