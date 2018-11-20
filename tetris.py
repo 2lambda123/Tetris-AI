@@ -63,10 +63,10 @@ def drawQueue(canvas,data):
                        fill="white", \
                        font=("Arial " + str(data.cellSize)) + " bold",\
                        anchor="s")
-    for i in range(len(data.queue)):
+    for i in range(4):
         canvas.create_rectangle(left-4,top+i*height-4,right+4,top+height+i*height+4, fill = "black")
         canvas.create_rectangle(left,top+i*height,right,top+(i+1)*height, fill = data.emptyColor)
-        pieceNum = data.queue[i]
+        pieceNum = (data.currentQueue + data.nextQueue)[i]
         piece = data.tetrisPieces[pieceNum]
         color = data.tetrisPieceColors[pieceNum]
         tall = len(piece)
@@ -122,7 +122,7 @@ def newFallingPiece(data,piece):
     data.fallingPieceColor = data.tetrisPieceColors[piece]
     data.numFallingPieceCols = len(data.fallingPiece[0])
     try:
-        data.lastHeight = data.fallingPieceRow+len(data.fallingPiece)
+        data.lastHeight = data.rows-(data.fallingPieceRow+len(data.fallingPiece))
     except:
         pass
     data.fallingPieceRow = 0
@@ -242,8 +242,11 @@ def placeFallingPiece(data):
             if piece[i][j]:
                 data.board[startRow+i][startCol+j] = data.fallingPieceColor
     removeFullRows(data)
-    newFallingPiece(data,data.queue.pop(0))
-    data.queue.append(random.randint(0,len(data.tetrisPieces)-1))
+
+    if len(data.currentQueue) == 0:
+        data.currentQueue = copy.copy(data.nextQueue)
+        random.shuffle(data.nextQueue)
+    newFallingPiece(data,data.currentQueue.pop(0))
     data.canSwitch = True
     
 #Removes full rows (sorry for the useless comment)
@@ -266,8 +269,7 @@ def holdPiece(data):
     if data.heldPieceNum == None:
         data.heldPieceNum = data.pieceNum
         data.heldPiece = data.fallingPiece
-        newFallingPiece(data,data.queue.pop(0))
-        data.queue.append(random.randint(0,len(data.tetrisPieces)-1))
+        newFallingPiece(data,data.currentQueue.pop(0))
     elif data.canSwitch:
         temp = data.heldPieceNum
         data.heldPieceNum = data.pieceNum
@@ -331,7 +333,13 @@ def init(data):
     data.pieceNum = random.randint(0,len(data.tetrisPieces)-1)
     data.lastHeight = len(data.tetrisPieces[data.pieceNum])
     data.pieceRotPos = 0
-    data.queue = [random.randint(0,len(data.tetrisPieces)-1) for _ in range(4)]
+
+    data.qPos = 0
+    data.currentQueue = list(range(7))
+    data.nextQueue = list(range(7))
+    random.shuffle(data.currentQueue)
+    random.shuffle(data.nextQueue)
+
     newFallingPiece(data,data.pieceNum)
 
 
@@ -395,6 +403,7 @@ def redrawAll(canvas, data):
     drawHold(canvas,data)
     drawQueue(canvas,data)
 
+
 ####################################
 # use the run function as-is
 ####################################
@@ -416,9 +425,11 @@ def run(width=300, height=300):
         redrawAllWrapper(canvas, data)
 
     def timerFiredWrapper(canvas, data):
+
         timerFired(data)
-        AI(canvas,data,redrawAllWrapper)
         redrawAllWrapper(canvas, data)
+        AI(canvas, data, redrawAllWrapper)
+
         # pause, then call timerFired again
         canvas.after(data.timerDelay, timerFiredWrapper, canvas, data)
     # Set up data and call init
@@ -426,7 +437,7 @@ def run(width=300, height=300):
     data = Struct()
     data.width = width
     data.height = height
-    data.timerDelay = 1000 # milliseconds
+    data.timerDelay = 0 # milliseconds
     root = Tk()
     root.resizable(width=False, height=False) # prevents resizing window
     init(data)
@@ -460,14 +471,23 @@ def run(width=300, height=300):
 # 2.
 
 def rateBoard(data):
+    lineCoeff = 4
+    holeCoeff = .5
+    heightCoeff = .1
+    sideCoeff = .05
+    compCoeff = .1
+
+
+
     lines = 0
-    holes = 0
     score = 0
     for row in data.board:
         if row.count(data.emptyColor) == 0:
             lines += 1
-    score += lines**2
+    score += (lines**2)*lineCoeff
 
+
+    holes = 0
     for i in range(data.cols):
         top=0
         newHoles = 0
@@ -478,7 +498,7 @@ def rateBoard(data):
                 newHoles += 1
             top += 1
         holes += newHoles
-    score -= holes
+    score -= holes*holeCoeff
 
 
     highestHeight = 0
@@ -486,20 +506,32 @@ def rateBoard(data):
         if data.board[i].count(data.emptyColor) != data.cols:
             highestHeight = i
             break
-    changeHeight = highestHeight - data.lastHeight
+    score -= data.lastHeight*heightCoeff #minimize height you place stuff at
 
-    # print("lastHeight:",data.lastHeight)
-    # print("biggestHeight",biggestHeight)
 
-    score -= changeHeight/4 #make totalHeight small
+    #Favor a side, lightly
+    score -= data.fallingPieceCol*sideCoeff
+
+
+    colHeight = []
+    for j in range(data.cols):
+        for i in range(data.rows):
+            if i == data.rows:
+                break
+            if data.board[i][j] != data.emptyColor:
+                break
+        colHeight.append(i)
+    compareHeight = 0
+    for i in range(data.cols-1):
+        compareHeight += abs(colHeight[i]-colHeight[i+1])
+    score -= compareHeight*compCoeff
 
     return score
 
 
-def findBestMove(data):
+def findBestMove(data,bestScore = -float("inf")):
     origScore = rateBoard(data)
     alreadyChecked = []
-    bestScore = -float("inf")
     bestMove = []
     progression = []
 
@@ -527,32 +559,47 @@ def findBestMove(data):
                     elif rating == bestScore:
                         bestMove.append((data.pieceRotPos, j))
             alreadyChecked.append(copy.copy(data.fallingPiece))
-    return bestMove
+    return bestMove,bestScore
+
+
+
+def makeMove(data,bestMove):
+    moveFallingPieces(data, 0, -1)
+    while data.pieceRotPos != bestMove[0]:
+        rotateFallingPiece(data)
+    data.fallingPieceCol = bestMove[1]
+    # This function takes hella long
 
 def AI(canvas,data,redraw):
     start = time.time()
-    bestMove = findBestMove(data)
-    # print(bestMove)
+    try:
+        bestMove = data.nextMove
+        bestScore = -float("inf")
+    except:
+        bestMove,bestScore = findBestMove(data)
+
+    for move in bestMove:
+        testHold = copy.deepcopy(data)
+        makeMove(testHold,move)
+        hardDrop(testHold)
+        newMoves,newScore = findBestMove(testHold,bestScore)
+        if len(newMoves) != 0:
+            bestScore = newScore
+            bestMove = [move]
+            data.nextMove = newMoves
+
+
+
+
     bestMove = random.choice(bestMove)
 
-
-    moveFallingPieces(data,0,-1)
-    while data.pieceRotPos != bestMove[0]:
-        # print(data.pieceRotPos)
-        rotateFallingPiece(data)
-    data.fallingPieceCol = bestMove[1]
-    redraw(canvas,data) # This function takes hella long
-
-    print("BEST: ", bestMove, "Time: ", time.time()-start)
-    # time.sleep(5)
+    makeMove(data,bestMove)
+    redraw(canvas, data)
     hardDrop(data)
 
 
+    print("BEST: ", bestMove, bestScore, "Time: ", time.time()-start)
     # print("Time Taken: ",time.time()-start)
-
-
-
-    # print(fart.fallingPiece)
 
 
 
