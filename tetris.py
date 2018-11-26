@@ -8,6 +8,7 @@ from tkinter import *
 import random
 import copy
 import time
+import os
 
 
 ##### My Functions
@@ -16,11 +17,25 @@ def gameDimensions():
     return (20, 10, 30, 225, 40)
 
 #Starts the game
-def playTetris():
+def playTetris(maxPieces = -1):
     rows, cols, cellSize, sideMargin, topMargin = gameDimensions()
     width = sideMargin*2+cellSize*cols
     height = topMargin*2+cellSize*rows
-    run(width, height)
+    no = run(width, height,maxPieces)
+    return no
+
+def genReadout(data):
+    totTime = time.time() - data.beginRun
+    print("TOTAL TIME: ", totTime)
+    print("TOTAL SCORE: ", data.score)
+    print("Score/Pieces ", data.score / data.numPlaced)
+    print("Score breakdown: ")
+    print("singles: ", data.scoring[0])
+    print("doubles: ", data.scoring[1])
+    print("trips: ", data.scoring[2])
+    print("tetrodes: ", data.scoring[3])
+    data.isGameOver = True
+
 
 #Draws the board with drawCell at the corrent spots
 def drawBoard(canvas, data):
@@ -148,6 +163,7 @@ def drawFallingPiece(canvas, data):
         data.width-data.margin,data.margin+3*data.cellSize, fill="white")
         canvas.create_text(data.width//2, data.margin+data.cellSize*2, \
         text = "GAME HAS ENDED\npress r to restart!")
+        return data
 
 #Moves, checks if move is legal, if not it undoes it
 def moveFallingPieces(data, drow, dcol):
@@ -331,6 +347,7 @@ def init(data):
     data.tetrisPieces = [iPiece, jPiece, lPiece, oPiece, sPiece, tPiece, zPiece]
     data.tetrisPieceColors = [cyan,blue,orange,yellow,green,purple,red]
     data.score = 0
+    data.timedOut = False
     data.isGameOver = False
     data.heldPieceNum = None
     data.heldPiece = None
@@ -391,16 +408,8 @@ def keyPressed(event, data):
             time.sleep(60)
 
     if event.keysym == "q":
-        totTime = time.time() - data.beginRun
-        print("TOTAL TIME: ", totTime)
-        print("TOTAL SCORE: ", data.score)
-        print("Score/Pieces ", data.score / data.numPlaced)
-        print("Score breakdown: ")
-        print("singles: ", data.scoring[0])
-        print("doubles: ", data.scoring[1])
-        print("trips: ", data.scoring[2])
-        print("tetrodes: ", data.scoring[3])
-        data.isGameOver = True
+        genReadout(data)
+
 
 
     # firstScore = rateBoard(data)
@@ -408,7 +417,7 @@ def keyPressed(event, data):
     # hardDrop(thing)
     # print((data.pieceRotPos, data.fallingPieceCol))
     # print(rateBoard(thing) - firstScore)
-    print(data.fallingPiece)
+    # print(data.fallingPiece)
 
 
 #Moves pieces, if it can't then it places it
@@ -418,6 +427,13 @@ def timerFired(data):
             placeFallingPiece(data)
         if not fallingPieceIsLegal(data):
             data.isGameOver = True
+
+    if not data.timedOut and data.maxPieces != -1 and data.numPlaced == data.maxPieces:
+        data.isGameOver = True
+        data.timedOut = True
+        genReadout(data)
+
+
 
 
 def redrawAll(canvas, data):
@@ -433,13 +449,13 @@ def redrawAll(canvas, data):
 # Run function from 15-112 course notes
 ####################################
 
-def run(width=300, height=300):
+def run(width=300, height=300, maxPieces = -1):
 
     def redrawAllWrapper(canvas, data):
         canvas.delete(ALL)
         canvas.create_rectangle(0, 0, data.width, data.height,
                                 fill='white', width=0)
-        redrawAll(canvas, data)
+        # redrawAll(canvas, data)
         canvas.update()
 
     def mousePressedWrapper(event, canvas, data):
@@ -458,12 +474,15 @@ def run(width=300, height=300):
 
         # pause, then call timerFired again
         canvas.after(data.timerDelay, timerFiredWrapper, canvas, data)
+        if data.isGameOver:
+            root.destroy()
     # Set up data and call init
     class Struct(object): pass
     data = Struct()
     data.width = width
     data.height = height
     data.timerDelay = 1 # milliseconds
+    data.maxPieces = maxPieces
     root = Tk()
     root.resizable(width=False, height=False) # prevents resizing window
     init(data)
@@ -479,7 +498,10 @@ def run(width=300, height=300):
     timerFiredWrapper(canvas, data)
     # and launch the app
     root.mainloop()  # blocks until window is closed
+
     print("bye!")
+    return data
+
 
 
 # 1. Make a set of methods that simulates moves and drops
@@ -496,23 +518,47 @@ def run(width=300, height=300):
 #     moveTo(i,j)
 # 2.
 
-def rateBoard(data):
-    noLineC = 0
-    oneLineC = 0
-    twoLineC = 0
-    threeLineC = 0
-    fourLineC = 0
+def cReader(file):
+    f = open(file,"r")
+    coeffs = f.read()
+    f.close()
+    coeffs.replace("\n","")
+    coeffs = coeffs.split(" ")
+    new = [float(x) for x in coeffs]
+    return new
 
-    lineCoeff = 1
-    holeCoeff = .5
-    # heightCoeff = .04
-    sideCoeff = .01
-    compCoeff = .1
+def cWriter(file, coeffs):
+    f = open(file,"w")
+    newFile = ""
+    for num in coeffs:
+        newFile += str(num) + " "
+    newFile = newFile[:-1]
+    f.write(newFile)
+
+
+def rateBoard(data):
+    #original coeffs:
+    # line: 1
+    # hole: 0.5
+    # comp: 0.1
+
+    # noLineC = 0
+    # oneLineC = 0
+    # twoLineC = 0
+    # threeLineC = 0
+    # fourLineC = 0
+    lineCoeff,holeCoeff,compCoeff = cReader("coeffs.txt")
+
+
+    # lineCoeff = 1
+    # holeCoeff = .5
+    # compCoeff = 0.1
+
     score = 0
 
 
-    temp = [noLineC,oneLineC,twoLineC, threeLineC,fourLineC]
-    score += data.lastClear*temp[data.lastClear]
+    # temp = [noLineC,oneLineC,twoLineC, threeLineC,fourLineC]
+    # score += data.lastClear*temp[data.lastClear]
 
     score += data.lastClear**2*lineCoeff
 
@@ -540,8 +586,8 @@ def rateBoard(data):
 #     score -= data.lastHeight*heightCoeff #minimize height you place stuff at
 #
 #
-    # Favor a side slightly
-    score -= data.fallingPieceCol*sideCoeff
+
+
 
     colHeight = []
     for j in range(data.cols):
@@ -599,43 +645,8 @@ def findBestMove(data,bestScore = -float("inf")):
             for i in range(len(bestMove)):
                 bestMove[i] = (bestMove[i][0], bestMove[i][1], 1)
     return bestMove,bestScore
-#
-# def allMove(data, moveList = []):
-#     allMove = []
-#     origScore = rateBoard(data)
-#     alreadyChecked = []
-#
-#     for i in range(4):
-#         data.fallingPieceCol = 5
-#         rotateFallingPiece(data)
-#         data.fallingPieceCol = 0
-#
-#         if data.fallingPiece not in alreadyChecked:
-#             for j in range(10):
-#                 if moveFallingPieces(data, 0, 1):
-#                     if j == 0:
-#                         moveFallingPieces(data, 0, -1)
-#                     thing = copy.deepcopy(data)
-#                     hardDrop(thing)
-#                     rating = rateBoard(thing) - origScore
-#                     # print(rating)
-#                     if rating > bestScore:
-#                         bestScore = rating
-#                         bestMove = [(data.pieceRotPos, j,0)]
-#                     elif rating == bestScore:
-#                         bestMove.append((data.pieceRotPos, j,0))
-#                     allMove.append((data.pieceRotPos,j,0))
-#             alreadyChecked.append(copy.copy(data.fallingPiece))
-#     if data.canSwitch:
-#         holding = copy.deepcopy(data)
-#         holdPiece(holding)
-#         newMoves, newScore = findBestMove(holding,bestScore)
-#         if newScore > bestScore and len(newMoves) > 0:
-#             bestScore = newScore
-#             bestMove = newMoves
-#             for i in range(len(bestMove)):
-#                 bestMove[i] = (bestMove[i][0], bestMove[i][1], 1)
-#     return bestMove,bestScore
+
+
 
 
 def makeMove(data,bestMove):
@@ -650,6 +661,8 @@ def makeMove(data,bestMove):
 
 
 def AI(canvas,data,redraw):
+    if not fallingPieceIsLegal(data):
+        data.isGameOver = True
     if data.isGameOver:
         return
 
@@ -675,20 +688,107 @@ def AI(canvas,data,redraw):
         if newBestMoves != []:
             bestMove = newBestMoves
 
-    bestMove = random.choice(bestMove)
-
-    makeMove(data,bestMove)
-    redraw(canvas, data) #this function takes hella long
+    try:
+        bestMove = random.choice(bestMove)
+        makeMove(data, bestMove)
+    except:
+        pass
+    # redraw(canvas, data) #this function takes hella long
     hardDrop(data)
 
-
-    print("BEST: ", bestMove, bestScore, "Time: ", time.time()-start)
-    # print("Time Taken: ",time.time()-start)
+    # print("BEST: ", bestMove, bestScore, "Time: ", time.time()-start)
 
 
+def testCoeffs(reps,maxPieces):
+    listRats = []
+    timedOut = True
+    for i in range(reps):
+        output = playTetris(maxPieces)
+        listRats.append(output.score/output.numPlaced)
+        if not timedOut:
+            timedOut = False
+            break
+    return sum(listRats)/reps, timedOut
 
 
-playTetris()
+def gradDescent():
+    alpha = .05
+    maxPieces = 500
+    reps = 1
+    cFile = "coeffs.txt"
+    coeffs = cReader(cFile)
+    # bestRatio = []
+    bestRatio = 0
+    bestCoeffs = []
+    for line in range(25,125,25):
+        for hole in range(25,125,25):
+            for side in range(1,6,1):
+                coeffs = [line/100,hole/100,side/10]
+                print(coeffs)
+                cWriter(cFile,coeffs)
+
+                rat, timedOut = testCoeffs(reps,maxPieces)
+                if not timedOut:
+                    continue
+                else:
+                    if rat-bestRatio > 0.1:
+                        bestCoeffs = coeffs
+                print(bestCoeffs)
+                print(bestRatio)
+
+gradDescent()
+    #
+    #
+    #
+    #
+    # # Iterating through each feature
+    # for i in range(len(coeffs)):
+    #     #Run the game, then run it again with a slightly changed coeff
+    #     lastRat,timedOut1 = testCoeffs(reps,maxPieces)
+    #
+    #     coeffs[i] += alpha
+    #     cWriter(cFile,coeffs)
+    #
+    #     newRat,timedOut2 = testCoeffs(reps, maxPieces)
+    #     print(lastRat)
+    #     print(newRat)
+    #     #if the ratio goes up, change coeffs again
+    #     while newRat-lastRat > 0.01:
+    #         #if game just straight up lost after change, change coeffs immediately
+    #         if not timedOut2:
+    #             coeffs[i] += alpha
+    #             cWriter(cFile, coeffs)
+    #             lastRat = testCoeffs(reps, maxPieces)
+    #         else:
+    #             lastRat = newRat
+    #
+    #         # either way, test again
+    #
+    #         coeffs[i] += alpha
+    #         cWriter(cFile, coeffs)
+    #
+    #         newRat = testCoeffs(reps, maxPieces)
+
+
+
+# gradDescent()
+# playTetris()
+
+
+def tester():
+    maxPieces = 50
+    reps = 100
+    lst = []
+    for i in range(reps):
+        output = playTetris(maxPieces)
+        lst.append(output.score/output.numPlaced)
+    print(lst)
+
+# tester()
+
+# yah = playTetris(200)
+# print(yah.numPlaced)
+
 
 
 # AI should
@@ -699,7 +799,7 @@ playTetris()
 # - make new data where it does each bestmove and finds the next best score
 
 
-# TODO:
+# TODO: You commented out two redraws (692,458), and the BEST:
 # fix lookahead
 # have it auto-optimize variables
 # New tetris pieces test
