@@ -229,6 +229,7 @@ def rotateFallingPiece(data):
 
 #Integrates a fallen piece into the data.board
 def placeFallingPiece(data):
+    data.lastClear = 0
     data.numPlaced += 1
     piece = data.fallingPiece
     pWidth = len(piece[0])
@@ -265,6 +266,7 @@ def removeFullRows(data):
     data.board = newBoard
     if fullRows != 0:
         data.scoring[fullRows-1] += 1
+    data.lastClear = fullRows
     data.score += fullRows**2
 
 def holdPiece(data):
@@ -337,6 +339,7 @@ def init(data):
     data.lastHeight = len(data.tetrisPieces[data.pieceNum])
     data.pieceRotPos = 0
 
+    data.lastClear = 0
     data.qPos = 0
     data.currentQueue = list(range(7))
     data.nextQueue = list(range(7))
@@ -460,7 +463,7 @@ def run(width=300, height=300):
     data = Struct()
     data.width = width
     data.height = height
-    data.timerDelay = 100 # milliseconds
+    data.timerDelay = 1 # milliseconds
     root = Tk()
     root.resizable(width=False, height=False) # prevents resizing window
     init(data)
@@ -494,32 +497,26 @@ def run(width=300, height=300):
 # 2.
 
 def rateBoard(data):
+    noLineC = 0
+    oneLineC = 0
+    twoLineC = 0
+    threeLineC = 0
+    fourLineC = 0
+
     lineCoeff = 1
-    holeCoeff = 1
-    # heightCoeff = .1
-    # sideCoeff = .01
-    compCoeff = .3
-
-
-
-    lines = 0
+    holeCoeff = .5
+    # heightCoeff = .04
+    sideCoeff = .01
+    compCoeff = .1
     score = 0
-    for row in data.board:
-        if row.count(data.emptyColor) == 0:
-            lines += 1
-    #This is me messing around with the scoring for lines. I gotta make this genomic
 
-    # if lines == 1:
-    #     pass
-    # else:
-    #     score += (lines**3)*lineCoeff
 
-    # if lines < 3:
-    #     score -= lines*5
-    # else:
-    #     score += lines**2*lineCoeff
+    temp = [noLineC,oneLineC,twoLineC, threeLineC,fourLineC]
+    score += data.lastClear*temp[data.lastClear]
 
-    score += (lines)**2*lineCoeff
+    score += data.lastClear**2*lineCoeff
+
+
 
     holes = 0
     for i in range(data.cols):
@@ -535,16 +532,16 @@ def rateBoard(data):
     score -= holes*holeCoeff
 
 # THESE UNDERLYING TWO BITS ARE WHAT BROKE THE HOLDING, IDK WHY
-    # highestHeight = 0
-    # for i in range(len(data.board)):
-    #     if data.board[i].count(data.emptyColor) != data.cols:
-    #         highestHeight = i
-    #         break
-    # score -= data.lastHeight*heightCoeff #minimize height you place stuff at
-
-
-    #Favor a side slightly
-    # score -= data.fallingPieceCol*sideCoeff
+#     highestHeight = 0
+#     for i in range(len(data.board)):
+#         if data.board[i].count(data.emptyColor) != data.cols:
+#             highestHeight = i
+#             break
+#     score -= data.lastHeight*heightCoeff #minimize height you place stuff at
+#
+#
+    # Favor a side slightly
+    score -= data.fallingPieceCol*sideCoeff
 
     colHeight = []
     for j in range(data.cols):
@@ -566,7 +563,6 @@ def findBestMove(data,bestScore = -float("inf")):
     origScore = rateBoard(data)
     alreadyChecked = []
     bestMove = []
-    progression = []
 
     for i in range(4):
         data.fallingPieceCol = 5
@@ -591,6 +587,7 @@ def findBestMove(data,bestScore = -float("inf")):
                         bestMove = [(data.pieceRotPos, j,0)]
                     elif rating == bestScore:
                         bestMove.append((data.pieceRotPos, j,0))
+                    # allMove.append((data.pieceRotPos,j,0))
             alreadyChecked.append(copy.copy(data.fallingPiece))
     if data.canSwitch:
         holding = copy.deepcopy(data)
@@ -602,7 +599,43 @@ def findBestMove(data,bestScore = -float("inf")):
             for i in range(len(bestMove)):
                 bestMove[i] = (bestMove[i][0], bestMove[i][1], 1)
     return bestMove,bestScore
-
+#
+# def allMove(data, moveList = []):
+#     allMove = []
+#     origScore = rateBoard(data)
+#     alreadyChecked = []
+#
+#     for i in range(4):
+#         data.fallingPieceCol = 5
+#         rotateFallingPiece(data)
+#         data.fallingPieceCol = 0
+#
+#         if data.fallingPiece not in alreadyChecked:
+#             for j in range(10):
+#                 if moveFallingPieces(data, 0, 1):
+#                     if j == 0:
+#                         moveFallingPieces(data, 0, -1)
+#                     thing = copy.deepcopy(data)
+#                     hardDrop(thing)
+#                     rating = rateBoard(thing) - origScore
+#                     # print(rating)
+#                     if rating > bestScore:
+#                         bestScore = rating
+#                         bestMove = [(data.pieceRotPos, j,0)]
+#                     elif rating == bestScore:
+#                         bestMove.append((data.pieceRotPos, j,0))
+#                     allMove.append((data.pieceRotPos,j,0))
+#             alreadyChecked.append(copy.copy(data.fallingPiece))
+#     if data.canSwitch:
+#         holding = copy.deepcopy(data)
+#         holdPiece(holding)
+#         newMoves, newScore = findBestMove(holding,bestScore)
+#         if newScore > bestScore and len(newMoves) > 0:
+#             bestScore = newScore
+#             bestMove = newMoves
+#             for i in range(len(bestMove)):
+#                 bestMove[i] = (bestMove[i][0], bestMove[i][1], 1)
+#     return bestMove,bestScore
 
 
 def makeMove(data,bestMove):
