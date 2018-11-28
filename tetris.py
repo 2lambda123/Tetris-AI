@@ -12,6 +12,20 @@ import os
 
 
 ##### My Functions
+def drawSlider(canvas,data):
+    left = data.margin*4/10
+    top = data.topMargin*10
+    right = data.margin*6/10
+    bot = data.topMargin*15
+    gridSize = data.topMargin-10
+
+    canvas.create_text(data.margin/2,data.topMargin*9,text="Speed")
+    canvas.create_rectangle(left-3,top,right+3,bot,fill = "black")
+    for i in range(data.speed):
+        canvas.create_rectangle(left,bot-data.topMargin*i-2,right,bot-data.topMargin*(i+1),fill="blue",width=5)
+
+
+
 def gameDimensions():
     #(rows, cols, cellSize, side margin, top bottom margin)
     return (20, 10, 30, 225, 40)
@@ -353,7 +367,7 @@ def init(data):
     data.heldPiece = None
     data.canSwitch = True
     data.pieceNum = random.randint(0,len(data.tetrisPieces)-1)
-    data.lastHeight = len(data.tetrisPieces[data.pieceNum])
+    data.lastHeight = 0
     data.pieceRotPos = 0
 
     data.lastClear = 0
@@ -365,6 +379,8 @@ def init(data):
 
     data.scoring = [0,0,0,0]
     data.numPlaced = 0
+    data.timeCounter = 0
+    data.speed = 4
 
 
     newFallingPiece(data,data.pieceNum)
@@ -372,7 +388,12 @@ def init(data):
 
 
 def mousePressed(event, data):
-    pass
+    print(event.y)
+    print(data.margin*4/10)
+    print(data.margin*6/10)
+    if data.margin*4/10 < event.x < data.margin*6/10:
+        if data.topMargin*10 < event.y < data.topMargin*15:
+            data.speed = 5-int((event.y-data.topMargin*10)/data.topMargin)
     # use event.x and event.y
 
 def keyPressed(event, data):
@@ -423,6 +444,7 @@ def keyPressed(event, data):
 #Moves pieces, if it can't then it places it
 def timerFired(data):
     if not (data.isGameOver):
+        data.timeCounter += 1
         if not moveFallingPieces(data,+1,0):
             placeFallingPiece(data)
         if not fallingPieceIsLegal(data):
@@ -443,6 +465,7 @@ def redrawAll(canvas, data):
     drawScore(canvas, data)
     drawHold(canvas,data)
     drawQueue(canvas,data)
+    drawSlider(canvas,data)
 
 
 ####################################
@@ -455,7 +478,7 @@ def run(width=300, height=300, maxPieces = -1):
         canvas.delete(ALL)
         canvas.create_rectangle(0, 0, data.width, data.height,
                                 fill='white', width=0)
-        # redrawAll(canvas, data)
+        redrawAll(canvas, data)
         canvas.update()
 
     def mousePressedWrapper(event, canvas, data):
@@ -470,18 +493,21 @@ def run(width=300, height=300, maxPieces = -1):
 
         timerFired(data)
         redrawAllWrapper(canvas, data)
-        AI(canvas, data, redrawAllWrapper)
+
+        AI(canvas, data, redrawAllWrapper,data.speed)
 
         # pause, then call timerFired again
         canvas.after(data.timerDelay, timerFiredWrapper, canvas, data)
+
         if data.isGameOver:
+
             root.destroy()
     # Set up data and call init
     class Struct(object): pass
     data = Struct()
     data.width = width
     data.height = height
-    data.timerDelay = 1 # milliseconds
+    data.timerDelay = 400 # milliseconds
     data.maxPieces = maxPieces
     root = Tk()
     root.resizable(width=False, height=False) # prevents resizing window
@@ -498,7 +524,7 @@ def run(width=300, height=300, maxPieces = -1):
     timerFiredWrapper(canvas, data)
     # and launch the app
     root.mainloop()  # blocks until window is closed
-
+    genReadout(data)
     print("bye!")
     return data
 
@@ -548,7 +574,7 @@ def rateBoard(data):
     # threeLineC = 0
     # fourLineC = 0
     lineCoeff,holeCoeff,compCoeff = cReader("coeffs.txt")
-
+    heightCoeff = .1
 
     # lineCoeff = 1
     # holeCoeff = .5
@@ -560,7 +586,14 @@ def rateBoard(data):
     # temp = [noLineC,oneLineC,twoLineC, threeLineC,fourLineC]
     # score += data.lastClear*temp[data.lastClear]
 
-    score += data.lastClear**2*lineCoeff
+    if data.lastClear == 1:
+        score -= .25
+    elif data.lastClear == 2:
+        score -= 0.1
+    else:
+        score += data.lastClear**4*lineCoeff
+
+    # score += data.lastClear**2*lineCoeff
 
 
 
@@ -577,15 +610,9 @@ def rateBoard(data):
         holes += newHoles
     score -= holes*holeCoeff
 
-# THESE UNDERLYING TWO BITS ARE WHAT BROKE THE HOLDING, IDK WHY
-#     highestHeight = 0
-#     for i in range(len(data.board)):
-#         if data.board[i].count(data.emptyColor) != data.cols:
-#             highestHeight = i
-#             break
-#     score -= data.lastHeight*heightCoeff #minimize height you place stuff at
-#
-#
+    # score -= data.lastHeight*heightCoeff #minimize height you place stuff at
+
+
 
 
 
@@ -660,7 +687,7 @@ def makeMove(data,bestMove):
 
 
 
-def AI(canvas,data,redraw):
+def AI(canvas,data,redraw,speed=5):
     if not fallingPieceIsLegal(data):
         data.isGameOver = True
     if data.isGameOver:
@@ -693,7 +720,9 @@ def AI(canvas,data,redraw):
         makeMove(data, bestMove)
     except:
         pass
-    # redraw(canvas, data) #this function takes hella long
+    time.sleep((5-speed)/10)
+    redraw(canvas, data) #this function takes hella long
+    time.sleep((5-speed)/10)
     hardDrop(data)
 
     # print("BEST: ", bestMove, bestScore, "Time: ", time.time()-start)
@@ -736,7 +765,7 @@ def gradDescent():
                 print(bestCoeffs)
                 print(bestRatio)
 
-gradDescent()
+# gradDescent()
     #
     #
     #
@@ -772,7 +801,7 @@ gradDescent()
 
 
 # gradDescent()
-# playTetris()
+playTetris()
 
 
 def tester():
