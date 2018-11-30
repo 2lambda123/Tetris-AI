@@ -31,11 +31,11 @@ def gameDimensions():
     return (20, 10, 30, 225, 40)
 
 #Starts the game
-def playTetris(maxPieces = -1):
+def playTetris(maxPieces = -1,gameMode=1):
     rows, cols, cellSize, sideMargin, topMargin = gameDimensions()
     width = sideMargin*2+cellSize*cols
     height = topMargin*2+cellSize*rows
-    no = run(width, height,maxPieces)
+    no = run(width, height,maxPieces,gameMode)
     return no
 
 def genReadout(data):
@@ -56,7 +56,7 @@ def drawBoard(canvas, data):
     for rowIndex in range(data.rows):
         for colIndex in range(data.cols):
             drawCell(canvas, data, rowIndex, colIndex, \
-            data.board[rowIndex][colIndex],data.cellSize,data.margin,\
+            data.board[rowIndex][colIndex],data.cellSize,data.margin+data.offset,\
                      data.topMargin)
 
 def drawHold(canvas, data):
@@ -331,10 +331,11 @@ def hardDrop(data):
 # customize these functions
 ####################################
 
-def init(data):
+def init(data,offset=0):
     data.beginRun = time.time()
     data.rows, data.cols, data.cellSize, data.margin,data.topMargin\
         = gameDimensions()
+    data.offset = offset
     data.emptyColor = "#2d2d2d"
     data.board = []
     for i in range(data.rows):
@@ -459,7 +460,7 @@ def timerFired(data):
 
 
 def redrawAll(canvas, data):
-    canvas.create_rectangle(0,0,data.width, data.height, fill="orange")
+    canvas.create_rectangle(data.offset,0,data.width+data.offset, data.height, fill="orange")
     drawBoard(canvas, data)
     drawFallingPiece(canvas, data)
     drawScore(canvas, data)
@@ -472,27 +473,34 @@ def redrawAll(canvas, data):
 # Run function from 15-112 course notes
 ####################################
 
-def run(width=300, height=300, maxPieces = -1):
+def run(width=300, height=300, maxPieces = -1,gameMode = 1):
 
     def redrawAllWrapper(canvas, data):
         canvas.delete(ALL)
         canvas.create_rectangle(0, 0, data.width, data.height,
                                 fill='white', width=0)
+        if gameMode != 1:
+            canvas.create_rectangle(data.offset, 0, data.width+data.offset, data.height,
+                                    fill='white', width=0)
         redrawAll(canvas, data)
+        redrawAll(canvas, secData)
         canvas.update()
 
     def mousePressedWrapper(event, canvas, data):
         mousePressed(event, data)
         redrawAllWrapper(canvas, data)
+        redrawAll(canvas, secData)
 
     def keyPressedWrapper(event, canvas, data):
         keyPressed(event, data)
         redrawAllWrapper(canvas, data)
+        redrawAll(canvas, secData)
 
     def timerFiredWrapper(canvas, data):
 
         timerFired(data)
         redrawAllWrapper(canvas, data)
+        redrawAll(canvas, secData)
 
         AI(canvas, data, redrawAllWrapper,data.speed)
 
@@ -500,20 +508,33 @@ def run(width=300, height=300, maxPieces = -1):
         canvas.after(data.timerDelay, timerFiredWrapper, canvas, data)
 
         if data.isGameOver:
-
             root.destroy()
     # Set up data and call init
     class Struct(object): pass
     data = Struct()
     data.width = width
+    newWidth = width
     data.height = height
-    data.timerDelay = 400 # milliseconds
+    data.timerDelay = 10 # milliseconds
     data.maxPieces = maxPieces
     root = Tk()
     root.resizable(width=False, height=False) # prevents resizing window
     init(data)
+
+    if gameMode != 1:
+        secData = Struct()
+        secData.width = width*2
+        secData.height = height
+        secData.maxPieces = maxPieces
+        init(secData,offset=width)
+
+        newWidth = data.width*2
+        print("yea")
+
+
+
     # create the root and the canvas
-    canvas = Canvas(root, width=data.width, height=data.height)
+    canvas = Canvas(root, width=newWidth, height=data.height)
     canvas.configure(bd=0, highlightthickness=0)
     canvas.pack()
     # set up events
@@ -720,9 +741,9 @@ def AI(canvas,data,redraw,speed=5):
         makeMove(data, bestMove)
     except:
         pass
-    time.sleep((5-speed)/10)
+    # time.sleep((5-speed)/10)
     redraw(canvas, data) #this function takes hella long
-    time.sleep((5-speed)/10)
+    # time.sleep((5-speed)/10)
     hardDrop(data)
 
     # print("BEST: ", bestMove, bestScore, "Time: ", time.time()-start)
@@ -801,7 +822,7 @@ def gradDescent():
 
 
 # gradDescent()
-playTetris()
+playTetris(gameMode=2)
 
 
 def tester():
