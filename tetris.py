@@ -12,6 +12,33 @@ import os
 
 
 ##### My Functions
+def makeButton(canvas,size,location,color,buttonText):
+    bounds = (location[0]-size,location[1]-size//3,
+                            location[0]+size,location[1]+size//3)
+    canvas.create_rectangle(bounds,
+                            fill=color)
+    canvas.create_text(location, text=buttonText)
+    return bounds
+
+def drawStart(canvas,data):
+    butSize = 100
+    halfWid = data.width//2
+    quart = data.height//4
+    canvas.create_rectangle(0,0,data.width,data.height,fill="#40c2e2")
+    canvas.create_text(halfWid,data.height/10, text = "Tetris AI",font="Helvetica 30 bold")
+    canvas.create_text(halfWid,data.height/7, text = "112 Term Project by Andy Kong",font="Helvetica 15 bold")
+
+    data.spButton = makeButton(canvas,butSize,(halfWid,int(quart*1.5)),"#eeeeee","Single Player Tetris")
+    data.vsButton = makeButton(canvas,butSize,(halfWid,quart*2.25),"#eeeeee","Play against AI")
+    data.AIButton = makeButton(canvas,butSize,(halfWid,quart*3),"#eeeeee","Watch AI play")
+
+    # img = PhotoImage(file="tetrisbg.png")
+    # icon = PhotoImage(file="t.png")
+    # canvas.create_image(halfWid,data.height,anchor="s",image=img)
+    # canvas.create_image(0,0,"tetrisbg.png")
+
+
+
 def drawSlider(canvas,data):
     left = data.margin*4/10
     top = data.topMargin*10
@@ -31,7 +58,7 @@ def gameDimensions():
     return (20, 10, 30, 225, 40)
 
 #Starts the game
-def playTetris(maxPieces = -1,gameMode=1):
+def playTetris(maxPieces = -1,gameMode=0):
     rows, cols, cellSize, sideMargin, topMargin = gameDimensions()
     width = sideMargin*2+cellSize*cols
     height = topMargin*2+cellSize*rows
@@ -387,18 +414,37 @@ def init(data,offset=0):
     newFallingPiece(data,data.pieceNum)
     # holdPiece(data)
 
+def inBounds(click,bounds):
+    if bounds[0] < click[0] < bounds[2]:
+        if bounds[1] < click[1] < bounds[3]:
+            return True
 
 def mousePressed(event, data):
-    print(event.y)
-    print(data.margin*4/10)
-    print(data.margin*6/10)
-    if data.margin*4/10 < event.x < data.margin*6/10:
-        if data.topMargin*10 < event.y < data.topMargin*15:
-            data.speed = 5-int((event.y-data.topMargin*10)/data.topMargin)
+    click = (event.x, event.y)
+
+    if data.gameMode == 0:
+        if inBounds(click,data.spButton):
+            print("1")
+            data.gameMode = 1
+        elif inBounds(click,data.vsButton):
+            print("2")
+            data.gameMode = 2
+        elif inBounds(click, data.AIButton):
+            print("3")
+            data.gameMode = 3
+    if inBounds(click,(data.margin*4//10,data.topMargin*10,data.margin*6//10,data.topMargin*15)):
+        data.speed = 5-int((event.y-data.topMargin*10)/data.topMargin)
+
+
+
+
     # use event.x and event.y
 
 def keyPressed(event, data):
 
+    if event.keysym == "Escape":
+        data.isGameOver = True
+        data.gameMode = 0
 
     #Controls restart
     if event.keysym == 'r':
@@ -473,68 +519,77 @@ def redrawAll(canvas, data):
 # Run function from 15-112 course notes
 ####################################
 
-def run(width=300, height=300, maxPieces = -1,gameMode = 1):
+def run(width=300, height=300, maxPieces = -1,gameMode = 0):
 
     def redrawAllWrapper(canvas, data):
+
         canvas.delete(ALL)
         canvas.create_rectangle(0, 0, data.width, data.height,
                                 fill='white', width=0)
-        if gameMode != 1:
+        if gameMode != 0 and gameMode !=1:
             canvas.create_rectangle(data.offset, 0, data.width+data.offset, data.height,
                                     fill='white', width=0)
         redrawAll(canvas, data)
-        redrawAll(canvas, secData)
+        # try:
+        #     redrawAll(canvas, secData)
+        # except:
+        #     pass
         canvas.update()
 
     def mousePressedWrapper(event, canvas, data):
         mousePressed(event, data)
         redrawAllWrapper(canvas, data)
-        redrawAll(canvas, secData)
+        try:
+            pass# redrawAll(canvas, secData)
+        except:
+            pass
 
     def keyPressedWrapper(event, canvas, data):
         keyPressed(event, data)
         redrawAllWrapper(canvas, data)
-        redrawAll(canvas, secData)
+        try:
+            pass# redrawAll(canvas, secData)
+        except:
+            pass
 
     def timerFiredWrapper(canvas, data):
-
-        timerFired(data)
-        redrawAllWrapper(canvas, data)
-        redrawAll(canvas, secData)
-
-        AI(canvas, data, redrawAllWrapper,data.speed)
-
-        # pause, then call timerFired again
+        if data.gameMode == 0:
+            drawStart(canvas,data)
+        else:
+            timerFired(data)
+            redrawAllWrapper(canvas, data)
+            try:
+                pass
+                # redrawAll(canvas, secData)
+            except:
+                secData = Struct()
+                secData.width = width*2
+                secData.height = height
+                secData.maxPieces = maxPieces
+                init(secData,offset=width)
+                data.width = data.width*2
+            AI(canvas, data, redrawAllWrapper,data.speed)
+            # pause, then call timerFired again
         canvas.after(data.timerDelay, timerFiredWrapper, canvas, data)
 
-        if data.isGameOver:
-            root.destroy()
+        # if data.isGameOver:
+        #     root.destroy()
     # Set up data and call init
+
+
     class Struct(object): pass
     data = Struct()
     data.width = width
-    newWidth = width
     data.height = height
     data.timerDelay = 10 # milliseconds
     data.maxPieces = maxPieces
-    root = Tk()
-    root.resizable(width=False, height=False) # prevents resizing window
+    data.gameMode = gameMode
     init(data)
 
-    if gameMode != 1:
-        secData = Struct()
-        secData.width = width*2
-        secData.height = height
-        secData.maxPieces = maxPieces
-        init(secData,offset=width)
-
-        newWidth = data.width*2
-        print("yea")
-
-
-
-    # create the root and the canvas
-    canvas = Canvas(root, width=newWidth, height=data.height)
+        # create the root and the canvas
+    root = Tk()
+    root.resizable(width=False, height=False) # prevents resizing window
+    canvas = Canvas(root, width=width, height=data.height)
     canvas.configure(bd=0, highlightthickness=0)
     canvas.pack()
     # set up events
@@ -542,7 +597,11 @@ def run(width=300, height=300, maxPieces = -1,gameMode = 1):
                             mousePressedWrapper(event, canvas, data))
     root.bind("<Key>", lambda event:
                             keyPressedWrapper(event, canvas, data))
+
+
     timerFiredWrapper(canvas, data)
+
+
     # and launch the app
     root.mainloop()  # blocks until window is closed
     genReadout(data)
@@ -822,7 +881,7 @@ def gradDescent():
 
 
 # gradDescent()
-playTetris(gameMode=2)
+playTetris()
 
 
 def tester():
