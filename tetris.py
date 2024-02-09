@@ -13,6 +13,21 @@ import os
 
 ##### My Functions
 def makeButton(canvas,size,location,color,buttonText):
+    """Creates a button on a canvas with specified size, location, color, and text.
+    Parameters:
+        - canvas (tkinter.Canvas): The canvas on which the button will be created.
+        - size (int): The size of the button, in pixels.
+        - location (tuple): The coordinates of the center of the button.
+        - color (str): The color of the button.
+        - buttonText (str): The text that will appear on the button.
+    Returns:
+        - bounds (tuple): A tuple containing the coordinates of the four corners of the button.
+    Processing Logic:
+        - Calculate the bounds of the button based on the size and location parameters.
+        - Create a rectangle on the canvas with the specified bounds and color.
+        - Create text on the canvas at the specified location with the specified text.
+        - Return the bounds of the button for future use."""
+    
     bounds = (location[0]-size,location[1]-size//3,
                             location[0]+size,location[1]+size//3)
     canvas.create_rectangle(bounds,
@@ -21,6 +36,8 @@ def makeButton(canvas,size,location,color,buttonText):
     return bounds
 
 def drawStart(canvas,data):
+    """"""
+    
     butSize = 100
     halfWid = data.width//2
     quart = data.height//4
@@ -40,6 +57,8 @@ def drawStart(canvas,data):
 
 
 def drawSlider(canvas,data):
+    """"""
+    
     left = data.margin*4/10
     top = data.topMargin*10
     right = data.margin*6/10
@@ -54,11 +73,29 @@ def drawSlider(canvas,data):
 
 
 def gameDimensions():
+    """"""
+    
     #(rows, cols, cellSize, side margin, top bottom margin)
     return (20, 10, 30, 225, 40)
 
 #Starts the game
 def playTetris(maxPieces = -1,gameMode=0):
+    """Plays a game of Tetris with customizable parameters.
+    Parameters:
+        - maxPieces (int): The maximum number of pieces to be played. Default is -1 for unlimited.
+        - gameMode (int): The game mode to be played. Default is 0 for classic mode.
+    Returns:
+        - no (int): The number of pieces played during the game.
+    Processing Logic:
+        - Gets the game dimensions based on the rows, columns, cell size, side margin, and top margin.
+        - Calculates the width and height of the game based on the dimensions.
+        - Runs the game with the specified parameters.
+        - Returns the number of pieces played during the game.
+    Example:
+        playTetris(10, 1)
+        # Plays a game of Tetris with a maximum of 10 pieces in mode 1.
+        # Returns the number of pieces played during the game."""
+    
     rows, cols, cellSize, sideMargin, topMargin = gameDimensions()
     width = sideMargin*2+cellSize*cols
     height = topMargin*2+cellSize*rows
@@ -66,6 +103,8 @@ def playTetris(maxPieces = -1,gameMode=0):
     return no
 
 def genReadout(data):
+    """"""
+    
     totTime = time.time() - data.beginRun
     print("TOTAL TIME: ", totTime)
     print("TOTAL SCORE: ", data.score)
@@ -80,6 +119,8 @@ def genReadout(data):
 
 #Draws the board with drawCell at the corrent spots
 def drawBoard(canvas, data):
+    """"""
+    
     for rowIndex in range(data.rows):
         for colIndex in range(data.cols):
             drawCell(canvas, data, rowIndex, colIndex, \
@@ -87,6 +128,8 @@ def drawBoard(canvas, data):
                      data.topMargin)
 
 def drawHold(canvas, data):
+    """"""
+    
     top = data.topMargin*3
     left = data.topMargin
     right = data.margin - left
@@ -109,6 +152,8 @@ def drawHold(canvas, data):
                     drawCell(canvas, data, row,col,color,data.cellSize,startX,startY)
 
 def drawQueue(canvas,data):
+    """"""
+    
     top = data.topMargin
     left = data.width - data.margin+data.topMargin
     right = data.width - top
@@ -135,6 +180,8 @@ def drawQueue(canvas,data):
     # canvas.create_rectangle(left, top, right, bot, fill="white")
 
 def lighten(color):
+    """"""
+    
     change = 1.7
     r = int(color[1:3], 16)
     g = int(color[3:5], 16)
@@ -154,6 +201,8 @@ def lighten(color):
 
 #Draws each block on the playing field
 def drawCell(canvas, data, row, col, color,cellSize,margin, topMargin):
+    """"""
+    
     startX = margin + cellSize*col
     startY = topMargin + cellSize*row
     canvas.create_rectangle(startX,startY,startX+cellSize,startY+cellSize,\
@@ -173,6 +222,8 @@ def drawCell(canvas, data, row, col, color,cellSize,margin, topMargin):
 
 #Spawns a new piece and resets all the piece data
 def newFallingPiece(data,piece):
+    """"""
+    
     data.fallingPiece = data.tetrisPieces[piece]
     data.fallingPieceColor = data.tetrisPieceColors[piece]
     data.numFallingPieceCols = len(data.fallingPiece[0])
@@ -189,6 +240,8 @@ def newFallingPiece(data,piece):
 
 #Draws the piece based on starting position and data.piece
 def drawFallingPiece(canvas, data):
+    """"""
+    
     piece = data.fallingPiece
     pieceColor = data.fallingPieceColor
     row = data.fallingPieceRow
@@ -208,6 +261,8 @@ def drawFallingPiece(canvas, data):
 
 #Moves, checks if move is legal, if not it undoes it
 def moveFallingPieces(data, drow, dcol):
+    """"""
+    
     data.fallingPieceRow += drow
     data.fallingPieceCol += dcol
     if fallingPieceIsLegal(data):
@@ -219,6 +274,17 @@ def moveFallingPieces(data, drow, dcol):
 
 
 def fallingPieceIsLegal(data):
+    """Function: fallingPieceIsLegal
+    Parameters:
+        - data (TetrisData): The data object containing the current state of the game.
+    Returns:
+        - bool: True if the falling piece is in a legal position, False otherwise.
+    Processing Logic:
+        - Check if each cell of the falling piece overlaps with a colored block on the board.
+        - Check if the falling piece is within the boundaries of the board.
+        - If any of the above conditions are met, return False.
+        - If all cells of the falling piece are legal, return True."""
+    
     #Making code more readable
     piece = data.fallingPiece
     pieceRow = data.fallingPieceRow
@@ -238,6 +304,17 @@ def fallingPieceIsLegal(data):
     return True
 
 def rotateFallingPiece(data):
+    """Rotate the falling piece in the game by 90 degrees clockwise.
+    Parameters:
+        - data (TetrisData): The data structure that contains the current state of the game.
+    Returns:
+        - bool: True if the rotation is successful and the new position is legal, False otherwise.
+    Processing Logic:
+        - Store the old information of the falling piece.
+        - Calculate the new location, dimensions, and piece.
+        - Assign the new variables to the data structure.
+        - Check if the rotation is legal, if not, revert back to the old position and return False."""
+    
     #Store old info
     oldPiece = copy.deepcopy(data.fallingPiece)
     oldRowPos = data.fallingPieceRow
@@ -286,6 +363,8 @@ def rotateFallingPiece(data):
 
 #Integrates a fallen piece into the data.board
 def placeFallingPiece(data):
+    """"""
+    
     data.lastClear = 0
     data.numPlaced += 1
     piece = data.fallingPiece
@@ -309,6 +388,8 @@ def placeFallingPiece(data):
 
 #Removes full rows (sorry for the useless comment)
 def removeFullRows(data):
+    """"""
+    
     oldBoard = data.board
     newBoard = []
     #makes a new board that doesn't have any full rows on it
@@ -327,6 +408,16 @@ def removeFullRows(data):
     data.score += fullRows**2
 
 def holdPiece(data):
+    """Holds the current falling piece and switches it with the previously held piece, if applicable.
+    Parameters:
+        - data (class): Contains all the necessary information for the game.
+    Returns:
+        - None: Does not return any value.
+    Processing Logic:
+        - If no piece is currently held, the current falling piece is stored as the held piece and a new piece is generated.
+        - If the player is allowed to switch pieces, the current falling piece is switched with the held piece and the player is no longer allowed to switch.
+        - The held piece is always the previously held piece or the current falling piece."""
+    
     if data.heldPieceNum == None:
         data.heldPieceNum = data.pieceNum
         data.heldPiece = data.fallingPiece
@@ -339,6 +430,8 @@ def holdPiece(data):
         data.canSwitch = False
 
 def drawScore(canvas, data):
+    """"""
+    
     canvas.create_text(data.width//2, data.topMargin//2, text="Score: " +\
     str(data.score), font="bold")
 
