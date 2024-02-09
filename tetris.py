@@ -634,12 +634,12 @@ def cReader(file):
     return new
 
 def cWriter(file, coeffs):
-    f = open(file,"w")
-    newFile = ""
-    for num in coeffs:
-        newFile += str(num) + " "
-    newFile = newFile[:-1]
-    f.write(newFile)
+    with open(file,"w") as f:
+        newFile = ""
+        for num in coeffs:
+            newFile += str(num) + " "
+        newFile = newFile[:-1]
+        f.write(newFile)
 
 
 def rateBoard(data):
